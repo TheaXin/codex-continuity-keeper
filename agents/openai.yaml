@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codex Continuity Keeper 2.2"
+  short_description: "保存已验证进度与安全文件断点，支持长任务中断、重启和跨会话继续"
+  default_prompt: "使用 $codex-continuity-keeper 读取实际项目与最新进度，先汇报再继续未完成任务。"
+policy:
+  allow_implicit_invocation: true
