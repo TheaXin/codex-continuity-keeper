@@ -2,7 +2,7 @@
 
 **让 Codex 长任务有断点、有进度，重开会话后可以继续；检测到低额度时优先交付已有成果。**
 
-当前版本：**2.2**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
+当前版本：**2.2.1**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
 
 - **继续**：先核对磁盘文件和 Git 差异，汇报进度，再继续原任务。
 - **只看进度**：仅查询，不修改文件、不继续实现。
@@ -386,7 +386,7 @@ python3 scripts/test_quota.py
 python3 scripts/test_deployment.py
 ```
 
-发布版 **19项测试在开发者的 macOS 环境通过**。仓库配置了 Linux / macOS / Windows × Python 3.11 / 3.12 / 3.13 的 GitHub Actions。其他平台的实际结果应查看 Actions，不能把本机成功当作远程矩阵已通过。
+发布版 **21项测试在开发者的 macOS 环境通过**。仓库配置了 Linux / macOS / Windows × Python 3.11 / 3.12 / 3.13 的 GitHub Actions。其他平台的实际结果应查看 Actions，不能把本机成功当作远程矩阵已通过。
 
 ### 可选真实宿主测试
 
@@ -424,3 +424,7 @@ DESIGN_AND_PROMPTS.zh-CN.md      # 参考项目与完整提示词合集
 官方接口依据：[Hooks](https://learn.chatgpt.com/docs/hooks)、[App Server](https://learn.chatgpt.com/docs/app-server)。
 
 本项目采用 **[MIT License](LICENSE)**。
+
+### Windows 符号链接修复
+
+早期发布的 Windows CI 发现 `O_NOFOLLOW` 不可用时可能跟随文件符号链接。现已增加跨平台 `lstat`、Windows reparse-point 检查与文件身份复核，并使用二进制读取保留 CRLF。Windows reparse-point 文件按保守策略排除；没有降低或跳过原过滤测试要求。跨平台通过情况以最新 Actions 为准。

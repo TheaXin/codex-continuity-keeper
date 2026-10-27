@@ -74,12 +74,26 @@ def locked(s):
         yield
     finally: os.close(fd)
 
+def indirect_file(info):
+    # Windows exposes symlinks/junctions as reparse points, without O_NOFOLLOW.
+    return stat.S_ISLNK(info.st_mode) or bool(getattr(info,'st_file_attributes',0) & getattr(stat,'FILE_ATTRIBUTE_REPARSE_POINT',0x400))
+
+def file_identity(info):
+    return info.st_dev,info.st_ino
+
 def read_safe(p):
-    fd=os.open(p,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_NONBLOCK',0))
+    before=os.lstat(p)
+    if indirect_file(before) or not stat.S_ISREG(before.st_mode): return None
+    flags=os.O_RDONLY|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_NONBLOCK',0)|getattr(os,'O_BINARY',0)
+    fd=os.open(p,flags)
     try:
         a=os.fstat(fd)
+        # Verify before reading any bytes, even on platforms without no-follow.
+        if indirect_file(a) or file_identity(a)!=file_identity(before): return None
         if not stat.S_ISREG(a.st_mode) or a.st_size>MAX_FILE: return None
         b=os.read(fd,MAX_FILE+1); z=os.fstat(fd)
+        after=os.lstat(p)
+        if indirect_file(after) or file_identity(after)!=file_identity(a): return None
         if len(b)>MAX_FILE or (a.st_mtime_ns,a.st_size)!=(z.st_mtime_ns,z.st_size): return None
         return b
     finally: os.close(fd)

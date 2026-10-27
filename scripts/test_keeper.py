@@ -3,6 +3,7 @@
 import concurrent.futures, hashlib, json, os, subprocess, sys, tempfile, unittest
 from pathlib import Path
 import keeper
+from unittest.mock import patch
 from install import install
 SCRIPT=Path(keeper.__file__).resolve()
 
@@ -59,6 +60,19 @@ class KeeperTests(unittest.TestCase):
         keeper.checkpoint(self.root)
         m=keeper.load(self.root/keeper.STATE/'latest.json')
         for n in ['.env','ordinary.txt','binary.bin','large.txt','private/note.txt']+(['link'] if linked else []): self.assertNotIn(n,m['files']); self.assertIn(n,m['skipped'])
+    def test_symlink_refused_without_os_nofollow(self):
+        external=self.base/'outside'; external.write_bytes(b'private outside content')
+        link=self.root/'link'
+        try: link.symlink_to(external)
+        except OSError: self.skipTest('OS does not permit creating test symlinks')
+        with patch.object(keeper.os,'O_NOFOLLOW',0,create=True):
+            self.assertIsNone(keeper.read_safe(link))
+        external.unlink()
+        self.assertIsNone(keeper.read_safe(link))
+    def test_binary_read_preserves_crlf_and_unicode(self):
+        expected='line one\r\n中文\r\n'.encode('utf-8')
+        p=self.root/'line-endings.txt';p.write_bytes(expected)
+        self.assertEqual(keeper.read_safe(p),expected)
     def test_concurrent_hooks_and_crash_orphan(self):
         keeper.init(self.root); (self.root/'a').write_text('saved')
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:

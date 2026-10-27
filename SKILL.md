@@ -5,7 +5,7 @@ metadata:
   short-description: "Codex Continuity Keeper 2.1 — 长任务断点保存与恢复"
 ---
 
-# Codex Continuity Keeper 2.2 (Quota Guard + portable deployment)
+# Codex Continuity Keeper 2.2.1 (Quota Guard + portable deployment)
 
 Support the user's original task; maintenance must stay brief and must not expand its scope. User requirements always take priority. This skill preserves disk work and verified knowledge; it cannot guarantee unlimited storage, quota, execution after a crash, or saving unwritten thoughts.
 
