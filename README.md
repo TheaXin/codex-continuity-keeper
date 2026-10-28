@@ -2,13 +2,30 @@
 
 **让 Codex 长任务有断点、有进度，重开会话后可以继续；检测到低额度时优先交付已有成果。**
 
-当前版本：**2.2.1**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
+当前版本：**2.3.0**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
 
 - **继续**：先核对磁盘文件和 Git 差异，汇报进度，再继续原任务。
 - **只看进度**：仅查询，不修改文件、不继续实现。
 - **额度剩余 ≤5%**：保存文件快照与应急索引，提醒模型更新进度并尽快交付。
 
 > 它减少中断造成的成果丢失，但不会增加或绕过额度。程序可以保存文件、检测额度和发送提示；语义进度与最终回复仍由模型执行，不能保证任意模型必定服从。
+
+## 固定版本下载、安装验收与恢复演示
+
+**[正式 GitHub Release](https://github.com/TheaXin/codex-continuity-keeper/releases/latest)** 提供固定版本的完整源码 ZIP、`SHA256SUMS.txt`、逐文件 `release-manifest.json`，以及九组跨平台 `acceptance-evidence.zip`。不要把不断变化的 main 分支当作不可变的发布包。
+
+建议顺序：
+
+1. 下载同一 Release 的 ZIP 与校验文件，解压前核对 SHA-256。
+2. 解压并审阅源码，运行 `python3 scripts/acceptance.py`，验证隔离安装和恢复链路。
+3. 运行 `python3 scripts/install.py` 安装到真实用户目录，再在实际 Codex 会话中审阅 `/hooks`。
+4. 运行 `python3 scripts/demo_recovery.py` 复现独立进程的中断、导出和继续执行。
+
+Windows 把 `python3` 替换为 `py -3 -X utf8`。两个验收/演示脚本默认只使用自动清理的临时工作区，不修改真实配置、不要求账户或远程模型。
+
+- **[完整安装验收步骤](docs/INSTALL_ACCEPTANCE.md)**：下载校验、逐文件验证、离线验收和真实账户/Hooks验收的区别。
+- **[恢复演示与预期结果](docs/RECOVERY_DEMO.md)**：一条命令演示，以及如何保留现场手工核对。
+- **[变更记录](CHANGELOG.md)**。
 
 ## 目录
 
@@ -384,9 +401,11 @@ python3 scripts/uninstall.py --apply
 python3 scripts/test_keeper.py
 python3 scripts/test_quota.py
 python3 scripts/test_deployment.py
+python3 scripts/test_release.py
+python3 scripts/acceptance.py --report acceptance.json
 ```
 
-发布版 **21项测试在开发者的 macOS 环境通过**。仓库配置了 Linux / macOS / Windows × Python 3.11 / 3.12 / 3.13 的 GitHub Actions。其他平台的实际结果应查看 Actions，不能把本机成功当作远程矩阵已通过。
+发布版包含 **26项自动测试**及9步独立安装验收；已在开发者的 macOS 环境执行通过。仓库配置了 Linux / macOS / Windows × Python 3.11 / 3.12 / 3.13 的 GitHub Actions。其他平台的实际结果应查看 Actions，不能把本机成功当作远程矩阵已通过。
 
 ### 可选真实宿主测试
 
@@ -428,3 +447,14 @@ DESIGN_AND_PROMPTS.zh-CN.md      # 参考项目与完整提示词合集
 ### Windows 符号链接修复
 
 早期发布的 Windows CI 发现 `O_NOFOLLOW` 不可用时可能跟随文件符号链接。现已增加跨平台 `lstat`、Windows reparse-point 检查与文件身份复核，并使用二进制读取保留 CRLF。Windows reparse-point 文件按保守策略排除；没有降低或跳过原过滤测试要求。跨平台通过情况以最新 Actions 为准。
+
+### 本地复现 Release 打包
+
+```bash
+python3 scripts/build_release.py --output ../ck-release-package
+python3 scripts/verify_release.py ../ck-release-package/codex-continuity-keeper-2.3.0.zip --manifest ../ck-release-package/release-manifest.json
+```
+
+输出目录必须是新路径，重复构建换目录名。同样的源文件字节以固定 ZIP 时间戳和顺序生成相同压缩包。构建器采用文件白名单，排除本地账户、工作区和运行状态。SHA-256 只证明与所选校验清单一致，不代替对发布者和源码的审阅。
+
+正式 Release 自动化只在 main 的九组测试和独立验收全部成功后运行，使用通过测试的精确提交创建版本标签及资产，已有 Release 不会被静默覆盖。

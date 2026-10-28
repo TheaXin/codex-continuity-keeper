@@ -1,0 +1,78 @@
+name: publish-release
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read validated version
+        id: version
+        run: |
+          python - <<'PY'
+          import os,re
+          from pathlib import Path
+          version=Path('VERSION').read_text().strip()
+          assert re.fullmatch(r'\d+\.\d+\.\d+',version)
+          assert re.fullmatch(r'[0-9a-f]{40}',os.environ['SOURCE_SHA'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('tag=v'+version+'\n')
+          PY
+      - name: Build and verify deterministic source package
+        run: |
+          python scripts/build_release.py --output dist
+          python scripts/verify_release.py dist/codex-continuity-keeper-$(cat VERSION).zip --manifest dist/release-manifest.json
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: acceptance-*
+          path: acceptance-evidence
+      - name: Validate all nine acceptance reports
+        run: |
+          python - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          reports=list(Path('acceptance-evidence').rglob('acceptance.json'))
+          assert len(reports)==9, f'Expected 9 reports, found {len(reports)}'
+          platforms=set()
+          for p in reports:
+              data=json.loads(p.read_text())
+              assert data['status']=='PASS'
+              assert data['version']==Path('VERSION').read_text().strip()
+              assert all(s['status']=='PASS' for s in data['steps'])
+              platforms.add((data['platform'],'.'.join(data['python'].split('.')[:2])))
+          assert platforms=={(s,v) for s in ['Linux','Darwin','Windows'] for v in ['3.11','3.12','3.13']}
+          with zipfile.ZipFile('dist/acceptance-evidence.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(reports): z.write(p,p.relative_to('acceptance-evidence'))
+          p=Path('dist/acceptance-evidence.zip')
+          with open('dist/SHA256SUMS.txt','a') as f:f.write(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
+          PY
+      - name: Publish release without overwriting existing tags or assets
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to replace its assets."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" dist/*.zip dist/SHA256SUMS.txt dist/release-manifest.json \
+            --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" \
+            --title "Continuity Keeper $RELEASE_TAG" --notes-file docs/RELEASE_NOTES.md

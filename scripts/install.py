@@ -29,8 +29,8 @@ def install(home,source,upgrade_from=None):
             if p.is_symlink(): raise ValueError('Refusing symlink '+str(p))
         if dest.exists():
             # Idempotent only: no overwrite of a previous or user-edited skill.
-            a={p.relative_to(source).as_posix():p.read_bytes() for p in source.rglob('*') if p.is_file() and not any(x in p.relative_to(source).parts for x in ['__pycache__','.git','.continuity-keeper','work','.venv'])}
-            b={p.relative_to(dest).as_posix():p.read_bytes() for p in dest.rglob('*') if p.is_file() and not any(x in p.relative_to(dest).parts for x in ['__pycache__','.git','.continuity-keeper','work','.venv'])}
+            a={p.relative_to(source).as_posix():p.read_bytes() for p in source.rglob('*') if p.is_file() and not any(x in p.relative_to(source).parts for x in ['__pycache__','.git','.continuity-keeper','work','.venv','dist','build'])}
+            b={p.relative_to(dest).as_posix():p.read_bytes() for p in dest.rglob('*') if p.is_file() and not any(x in p.relative_to(dest).parts for x in ['__pycache__','.git','.continuity-keeper','work','.venv','dist','build'])}
             if a!=b:
                 if not upgrade_from: raise ValueError('Existing skill differs; preserve it and review upgrade explicitly')
                 baseline=json.loads(Path(upgrade_from).read_text(encoding='utf-8-sig')).get('files_sha256',{})
@@ -46,14 +46,14 @@ def install(home,source,upgrade_from=None):
             if group not in groups: groups.append(group)
         backup=home/'continuity-keeper-install'/('backup-'+str(time.time_ns()))
         backup.mkdir(mode=0o700)
-        for n,b in [('hooks.json',old),('AGENTS.md',agent_old)]:
-            if b is not None: atomic(backup/n,b)
+        for n,previous_bytes in [('hooks.json',old),('AGENTS.md',agent_old)]:
+            if previous_bytes is not None: atomic(backup/n,previous_bytes)
         atomic(backup/'manifest.json',encoded({'time':time.time(),'absent_before':[n for n,b in [('hooks.json',old),('AGENTS.md',agent_old)] if b is None],'config_toml':'untouched','skill_existed':dest.exists()}))
         replacing=dest.exists() and a!=b
         if not dest.exists() or replacing:
             dest.parent.mkdir(parents=True,exist_ok=True)
             stage=dest.parent/('.continuity-stage-'+str(time.time_ns()))
-            shutil.copytree(source,stage,ignore=shutil.ignore_patterns('__pycache__','*.pyc','.git','.continuity-keeper','work','.venv'))
+            shutil.copytree(source,stage,ignore=shutil.ignore_patterns('__pycache__','*.pyc','.git','.continuity-keeper','work','.venv','dist','build'))
             for p in (stage/'scripts').glob('*.py'): p.chmod(0o700)
             if replacing: os.rename(dest,backup/'skill')
             try: os.rename(stage,dest)

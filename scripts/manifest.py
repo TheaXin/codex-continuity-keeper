@@ -2,7 +2,7 @@
 """Create a reviewable hash baseline for an installed skill; does not update it."""
 import argparse,hashlib,json,os
 from pathlib import Path
-IGNORED={'__pycache__','.git','.continuity-keeper','work','.venv'}
+IGNORED={'__pycache__','.git','.continuity-keeper','work','.venv','dist','build'}
 def manifest(skill):
     skill=Path(skill).expanduser().resolve()
     if not (skill/'SKILL.md').is_file():raise ValueError('Select an existing skill containing SKILL.md')

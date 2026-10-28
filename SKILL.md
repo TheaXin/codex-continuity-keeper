@@ -5,7 +5,7 @@ metadata:
   short-description: "Codex Continuity Keeper 2.1 — 长任务断点保存与恢复"
 ---
 
-# Codex Continuity Keeper 2.2.1 (Quota Guard + portable deployment)
+# Codex Continuity Keeper 2.3.0 (Quota Guard + portable deployment)
 
 Support the user's original task; maintenance must stay brief and must not expand its scope. User requirements always take priority. This skill preserves disk work and verified knowledge; it cannot guarantee unlimited storage, quota, execution after a crash, or saving unwritten thoughts.
 
@@ -57,3 +57,7 @@ When the desktop `get_usage_limits` tool is available, prefer its actual result 
 4. Immediately issue a final response with **已有成果** (clickable absolute paths), **未完成/未验证**, **恢复方法** (after quota resets, return to this project and say 继续). State the observed remaining window(s); do not mark unfinished goals complete.
 
 The program creates `.continuity-keeper/QUOTA_HANDOFF.md`, a mechanical recovery index; the model supplies the semantic report. If quota already blocks output, that index, prior snapshots and ordinary checkpoints remain available. Missing windows do not prove a previous low window recovered; a fresh healthy observation or an elapsed reset clears that window's low signal. Unavailable quota prompts one official tool fallback, not a retry loop. No sampled monitor can guarantee an exact 5% crossing or saving during a single very large operation.
+
+## Installation acceptance and recovery demonstration
+
+For independent verification use `scripts/acceptance.py`; it installs into an isolated temporary Codex home and tests fresh-process recovery and a simulated quota boundary. `scripts/demo_recovery.py --workspace NEW_DIRECTORY` preserves a NEW demo outside the source checkout for inspection. Read [installation acceptance](docs/INSTALL_ACCEPTANCE.md) and [recovery demo](docs/RECOVERY_DEMO.md) when reproducing a public Release. These tests do not grant real Hooks trust or establish live account quota access.

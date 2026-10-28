@@ -20,3 +20,12 @@ jobs:
       - run: python scripts/test_keeper.py
       - run: python scripts/test_quota.py
       - run: python scripts/test_deployment.py
+      - run: python scripts/test_release.py
+      - name: Isolated installation acceptance and recovery demo
+        run: python scripts/acceptance.py --report acceptance.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-${{ matrix.os }}-${{ matrix.python }}
+          path: acceptance.json
+          if-no-files-found: error
+          overwrite: true
