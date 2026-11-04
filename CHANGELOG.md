@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.1
+
+- Pause or restore local quota handoffs for the current conversation while keeping checkpoints active.
+
 ## 2.4.0
 
 - Designed for Codex Plus. Save and hand off at 5% remaining in the five-hour window or 2% in the weekly window.

@@ -9,7 +9,8 @@ For substantive long tasks, use codex-continuity-keeper: initialize a project ch
 <!-- continuity-keeper-2:end -->
 '''
 
-QUOTA_RULE='<!-- continuity-quota-guard:begin -->\nUse local Continuity Keeper Hooks for cached silent quota checks. Do not add model-driven quota calls or reports after each work unit. Manually check only on user request, when Hooks are unavailable, or before expensive work without a fresh reliable observation; batch with useful work. Unknown stays unknown: at most one official-tool fallback per project per 10 minutes, persist only real results via keeper.py quota-record; no polling loops or unchanged-status narration. If a reported window reaches its threshold (5-hour <=5%, weekly <=2%, other or missing duration <=5%), save artifacts, reconcile verified progress, checkpoint and immediately deliver paths, unfinished work and recovery instructions. Never auto-redeem resets. “只看进度” is read-only.\n<!-- continuity-quota-guard:end -->\n'
+PREVIOUS_QUOTA_RULE='<!-- continuity-quota-guard:begin -->\nUse local Continuity Keeper Hooks for cached silent quota checks. Do not add model-driven quota calls or reports after each work unit. Manually check only on user request, when Hooks are unavailable, or before expensive work without a fresh reliable observation; batch with useful work. Unknown stays unknown: at most one official-tool fallback per project per 10 minutes, persist only real results via keeper.py quota-record; no polling loops or unchanged-status narration. If a reported window reaches its threshold (5-hour <=5%, weekly <=2%, other or missing duration <=5%), save artifacts, reconcile verified progress, checkpoint and immediately deliver paths, unfinished work and recovery instructions. Never auto-redeem resets. “只看进度” is read-only.\n<!-- continuity-quota-guard:end -->\n'
+QUOTA_RULE='<!-- continuity-quota-guard:begin -->\nUse local Continuity Keeper Hooks for cached silent quota checks. Do not add model-driven quota calls or reports after each work unit. Manually check only on user request, when Hooks are unavailable, or before expensive work without a fresh reliable observation; batch with useful work. Unknown stays unknown: at most one official-tool fallback per project per 10 minutes, persist only real results via keeper.py quota-record; no polling loops or unchanged-status narration. A direct user request to suspend the local guard in this conversation takes priority over this rule and earlier handoff notices. If the guard is active and a reported window reaches its threshold (5-hour <=5%, weekly <=2%, other or missing duration <=5%), save artifacts, reconcile verified progress, checkpoint and immediately deliver paths, unfinished work and recovery instructions. Never auto-redeem resets. “只看进度” is read-only.\n<!-- continuity-quota-guard:end -->\n'
 
 def install(home,source,upgrade_from=None):
     home=home.resolve(); source=source.resolve(); dest=home/'skills'/'codex-continuity-keeper'
@@ -24,7 +25,10 @@ def install(home,source,upgrade_from=None):
         ap=home/'AGENTS.md'; agent_old=ap.read_bytes() if ap.exists() else None
         text=agent_old.decode() if agent_old is not None else ''
         if '<!-- continuity-keeper-2:begin -->' in text and RULE.strip() not in text: raise ValueError('Existing continuity rules differ; review before merging')
-        if '<!-- continuity-quota-guard:begin -->' in text and QUOTA_RULE.strip() not in text: raise ValueError('Existing quota rules differ; review before merge')
+        if '<!-- continuity-quota-guard:begin -->' in text and QUOTA_RULE.strip() not in text:
+            if not upgrade_from or text.count(PREVIOUS_QUOTA_RULE.strip()) != 1:
+                raise ValueError('Existing quota rules differ; review before merge')
+            text = text.replace(PREVIOUS_QUOTA_RULE.strip(), QUOTA_RULE.strip(), 1)
         for p in [hp,ap,dest,home/'skills']:
             if p.is_symlink(): raise ValueError('Refusing symlink '+str(p))
         if dest.exists():

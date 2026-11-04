@@ -11,7 +11,7 @@
 
 ```bash
 # macOS：比较输出与 SHA256SUMS.txt 的 ZIP 行
-shasum -a 256 codex-continuity-keeper-2.4.0.zip
+shasum -a 256 codex-continuity-keeper-2.4.1.zip
 # Linux：同时检查 ZIP 和 manifest
 sha256sum -c SHA256SUMS.txt
 ```
@@ -19,7 +19,7 @@ sha256sum -c SHA256SUMS.txt
 Windows PowerShell：
 
 ```powershell
-Get-FileHash .\codex-continuity-keeper-2.4.0.zip -Algorithm SHA256
+Get-FileHash .\codex-continuity-keeper-2.4.1.zip -Algorithm SHA256
 ```
 
 校验文件应来自同一 Release。校验提供完整性检查，不等于独立签名认证。
@@ -27,7 +27,7 @@ Get-FileHash .\codex-continuity-keeper-2.4.0.zip -Algorithm SHA256
 3. 解压，在版本目录打开终端，审阅源码，再逐文件验证：
 
 ```bash
-python3 scripts/verify_release.py ../codex-continuity-keeper-2.4.0.zip --manifest ../release-manifest.json
+python3 scripts/verify_release.py ../codex-continuity-keeper-2.4.1.zip --manifest ../release-manifest.json
 ```
 
 Windows 用 `py -3 -X utf8` 替换 `python3`；按实际下载位置调整路径。

@@ -30,6 +30,21 @@ class QuotaTests(unittest.TestCase):
         result=quota.observe(self.root,raw)
         self.assertEqual([w['window'] for w in result['lowWindows']],['secondary'])
 
+    def test_user_override_is_scoped_and_reversible(self):
+        def event(kind, session, prompt=''):
+            return keeper.hook({'cwd': str(self.root), 'hook_event_name': kind,
+                                'session_id': session, 'prompt': prompt})
+
+        with patch.object(quota, 'fetch_limits', return_value=data(1, 98)):
+            self.assertIn('LOW_QUOTA_HANDOFF', str(event('UserPromptSubmit', 'a', '继续')))
+            override = event('UserPromptSubmit', 'a', '忽略额度继续做')
+            self.assertIn('LOCAL_QUOTA_OVERRIDE', str(override))
+            self.assertNotIn('LOW_QUOTA_HANDOFF:', str(override))
+            self.assertEqual(event('PostToolUse', 'a'), {})
+            self.assertIn('LOCAL_QUOTA_OVERRIDE', str(event('UserPromptSubmit', 'a', '继续')))
+            self.assertIn('LOW_QUOTA_HANDOFF', str(event('PostToolUse', 'b', '忽略额度继续做')))
+            self.assertIn('LOW_QUOTA_HANDOFF', str(event('UserPromptSubmit', 'a', '恢复额度护栏')))
+
     def test_thresholds_any_window_and_null(self):
         for a,b,want in [(94.99,50,False),(94.999999,50,False),(95,50,True),(1,95,False),(1,97.99,False),(1,98,True),(100,20,True),(5,None,False)]:
             with self.subTest(a=a,b=b):

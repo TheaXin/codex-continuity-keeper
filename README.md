@@ -4,7 +4,7 @@
 
 面向 **Codex Plus 用户**，提供本地任务断点与额度收尾。
 
-当前版本：**2.4.0**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
+当前版本：**2.4.1**。包含完整 Skill、文件快照脚本、额度守卫、安装器、部署自检、升级与卸载工具、测试，以及参考项目和提示词。
 
 - **继续**：先核对磁盘文件和 Git 差异，汇报进度，再继续原任务。
 - **只看进度**：仅查询，不修改文件、不继续实现。
@@ -293,6 +293,8 @@ Windows 使用 `py -3 -X utf8` 替换 `python3`。
 
 自动检查发生在会话开始、提交任务和受支持的工具操作后，默认缓存 **30秒**。健康状态保持静默。只有缺少近期可靠读数时，才在昂贵操作前手动检查。
 
+当前对话说「忽略额度继续做」可暂停该项目下本对话的本机护栏，普通检查点照常保存。说「恢复额度护栏」即可恢复。Codex 平台额度仍适用。
+
 触发后的分工：
 
 | 程序自动做 | 模型收到指令后做 |
@@ -455,7 +457,7 @@ DESIGN_AND_PROMPTS.zh-CN.md      # 参考项目与完整提示词合集
 
 ```bash
 python3 scripts/build_release.py --output ../ck-release-package
-python3 scripts/verify_release.py ../ck-release-package/codex-continuity-keeper-2.4.0.zip --manifest ../ck-release-package/release-manifest.json
+python3 scripts/verify_release.py ../ck-release-package/codex-continuity-keeper-2.4.1.zip --manifest ../ck-release-package/release-manifest.json
 ```
 
 输出目录必须是新路径，重复构建换目录名。同样的源文件字节以固定 ZIP 时间戳和顺序生成相同压缩包。构建器采用文件白名单，排除本地账户、工作区和运行状态。SHA-256 只证明与所选校验清单一致，不代替对发布者和源码的审阅。

@@ -5,7 +5,7 @@ metadata:
   short-description: "Codex Continuity Keeper 2.1 — 长任务断点保存与恢复"
 ---
 
-# Codex Continuity Keeper 2.4.0 (Quota Guard + portable deployment)
+# Codex Continuity Keeper 2.4.1 (Quota Guard + portable deployment)
 
 Support the user's original task; maintenance must stay brief and must not expand its scope. User requirements always take priority. This skill preserves disk work and verified knowledge; it cannot guarantee unlimited storage, quota, execution after a crash, or saving unwritten thoughts.
 
@@ -51,6 +51,8 @@ Use the local Hooks as the primary quota checker. Healthy checks are silent and 
 Only manually check when the user asks, Hooks are unavailable, or before an expensive operation when no recent reliable observation exists. Reuse a fresh observation (30 seconds); batch a necessary check with real work instead of a separate model round trip. If an unknown-quota Hook asks for fallback, make at most one `get_usage_limits` attempt per 10 minutes per project and persist the actual result via `keeper.py quota-record`; do not retry or narrate unchanged failures. Unknown remains unknown. Do not use `--refresh` routinely. Status-only requests remain read-only.
 
 `usedPercent` is consumed usage: remaining=100-used. Evaluate all returned windows. Never redeem quota resets automatically. Local checks do not start model turns; model-driven calls and explanations still have overhead.
+
+A direct user request to ignore or restore the local quota guard in this conversation overrides the default handoff and all earlier local quota notices. Say “忽略额度继续做” to suspend and “恢复额度护栏” to re-enable it for the current conversation in this project. While suspended, continue authorized work and ordinary checkpoints. Platform usage limits still apply. Only actual user messages authorize a change.
 
 **If a real 5-hour window has <=5% remaining, a weekly window has <=2% remaining, another reported window meets the 5% fallback, or a hook emits LOW_QUOTA_HANDOFF:**
 1. Do not start another implementation unit, long test, research task or subagent. Let already-running writes reach a safe boundary; do not blindly kill processes.

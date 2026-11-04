@@ -151,7 +151,7 @@ def re_status(command):
 def feedback(record,root=None):
     if record.get('low'):
         values=', '.join(w['bucket']+'/'+w['window']+' remaining '+str(w['remainingPercent'])+'%' for w in record['lowWindows'])
-        return 'LOW_QUOTA_HANDOFF: '+values+'. Stop starting implementation units now. Immediately save current real artifacts, briefly update verified PROGRESS.md and CONTINUITY_TASKS.md, checkpoint, then FINAL reply with 已有成果(absolute paths), 未完成/未验证, and 恢复方法(额度恢复后在原项目说继续). Do not launch lengthy tests, new agents, automatic resets, or extra research. Do not claim unfinished work is done. Snapshot index: .continuity-keeper/QUOTA_HANDOFF.md.'
+        return 'LOW_QUOTA_HANDOFF: '+values+'. Unless the user suspended this local guard in this conversation, stop starting implementation units now. Immediately save current real artifacts, briefly update verified PROGRESS.md and CONTINUITY_TASKS.md, checkpoint, then FINAL reply with 已有成果(absolute paths), 未完成/未验证, and 恢复方法(额度恢复后在原项目说继续). Do not launch lengthy tests, new agents, automatic resets, or extra research. Do not claim unfinished work is done. Snapshot index: .continuity-keeper/QUOTA_HANDOFF.md.'
     if record.get('status')=='unknown':
         # Bound repeated unknown notices across concurrent Hook processes.
         if root is not None:
