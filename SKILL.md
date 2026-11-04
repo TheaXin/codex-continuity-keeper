@@ -1,11 +1,11 @@
 ---
 name: codex-continuity-keeper
-description: Persist verified long-task progress and safe local checkpoints across quota exhaustion, compaction, crashes and new sessions. Use for 继续, 只看进度, 恢复任务, 保存断点, continuity keeper, or resuming unfinished work in a project with PROGRESS.md or continuity state.
+description: Designed for Codex Plus users. Persist verified long-task progress and safe local checkpoints across quota exhaustion, compaction, crashes and new sessions. Use for 继续, 只看进度, 恢复任务, 保存断点, continuity keeper, or resuming unfinished work in a project with PROGRESS.md or continuity state.
 metadata:
   short-description: "Codex Continuity Keeper 2.1 — 长任务断点保存与恢复"
 ---
 
-# Codex Continuity Keeper 2.3.0 (Quota Guard + portable deployment)
+# Codex Continuity Keeper 2.4.0 (Quota Guard + portable deployment)
 
 Support the user's original task; maintenance must stay brief and must not expand its scope. User requirements always take priority. This skill preserves disk work and verified knowledge; it cannot guarantee unlimited storage, quota, execution after a crash, or saving unwritten thoughts.
 
@@ -44,19 +44,21 @@ Read [operations.md](references/operations.md) for install/trust, limits, privac
 
 A hook error is advisory and visible. Keep doing authorized task work; retry a manual checkpoint when useful. Do not claim protection if hooks are untrusted, disabled, not loaded, storage is full, a scan is incomplete, or the file is filtered. New hook definitions require Codex's `/hooks` trust review, and an already-running chat may need a restart/new session to load them. The skill and AGENTS.md manual checkpoints remain the fallback.
 
-## Low-quota handoff (<=5% remaining)
+## Low-quota handoff for Codex Plus
 
-Run `python3 "$KEEPER" --root "$PROJECT" quota` at the start of substantive work, between verifiable units and before expensive operations. Hooks also check at SessionStart/UserPromptSubmit/PostToolUse, with a 30-second cache and a bounded official account API read. `quota --refresh` forces a live attempt. A failed/missing read means unknown, never zero or unlimited. For status-only requests do not run these mutating helpers; use the read-only installed usage tool if the user asks about quota.
+Use the local Hooks as the primary quota checker. Healthy checks are silent and cached for 30 seconds; do not add a model tool call, analysis or progress message after each work unit merely to inspect quota. Never start an AI automation solely to poll usage. Continue ordinary durable checkpoints independently.
 
-When the desktop `get_usage_limits` tool is available, prefer its actual result if the hook probe fails or a fresh check is needed. Feed that real JSON result to `keeper.py quota-record` via stdin, never an invented estimate or shell-interpolated command. `usedPercent` is consumed usage: remaining=100-used. Evaluate every returned primary/secondary window and bucket; null is unknown. Reset timestamps invalidate expired observations. No quota resets are redeemed automatically.
+Only manually check when the user asks, Hooks are unavailable, or before an expensive operation when no recent reliable observation exists. Reuse a fresh observation (30 seconds); batch a necessary check with real work instead of a separate model round trip. If an unknown-quota Hook asks for fallback, make at most one `get_usage_limits` attempt per 10 minutes per project and persist the actual result via `keeper.py quota-record`; do not retry or narrate unchanged failures. Unknown remains unknown. Do not use `--refresh` routinely. Status-only requests remain read-only.
 
-**If any real window has remaining <=5%, or a hook emits LOW_QUOTA_HANDOFF:**
+`usedPercent` is consumed usage: remaining=100-used. Evaluate all returned windows. Never redeem quota resets automatically. Local checks do not start model turns; model-driven calls and explanations still have overhead.
+
+**If a real 5-hour window has <=5% remaining, a weekly window has <=2% remaining, another reported window meets the 5% fallback, or a hook emits LOW_QUOTA_HANDOFF:**
 1. Do not start another implementation unit, long test, research task or subagent. Let already-running writes reach a safe boundary; do not blindly kill processes.
 2. Save existing real artifacts, then make one short factual merge into PROGRESS.md / CONTINUITY_TASKS.md: verified work, partial/unverified work, important absolute paths and the exact next safe action. Do not spend the reserve polishing documentation.
 3. Run one checkpoint (unchanged content deduplicates). If this fails, report the failure and the files already on disk; do not loop.
 4. Immediately issue a final response with **已有成果** (clickable absolute paths), **未完成/未验证**, **恢复方法** (after quota resets, return to this project and say 继续). State the observed remaining window(s); do not mark unfinished goals complete.
 
-The program creates `.continuity-keeper/QUOTA_HANDOFF.md`, a mechanical recovery index; the model supplies the semantic report. If quota already blocks output, that index, prior snapshots and ordinary checkpoints remain available. Missing windows do not prove a previous low window recovered; a fresh healthy observation or an elapsed reset clears that window's low signal. Unavailable quota prompts one official tool fallback, not a retry loop. No sampled monitor can guarantee an exact 5% crossing or saving during a single very large operation.
+The program creates `.continuity-keeper/QUOTA_HANDOFF.md`, a mechanical recovery index; the model supplies the semantic report. If quota already blocks output, that index, prior snapshots and ordinary checkpoints remain available. Missing windows do not prove a previous low window recovered; a fresh healthy observation or an elapsed reset clears that window's low signal. Unavailable quota prompts one official tool fallback, not a retry loop. No sampled monitor can guarantee an exact threshold crossing or saving during a single very large operation.
 
 ## Installation acceptance and recovery demonstration
 

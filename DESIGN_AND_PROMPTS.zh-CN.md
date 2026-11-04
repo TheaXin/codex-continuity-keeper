@@ -2,7 +2,7 @@
 
 本文件汇总开发 Codex Continuity Keeper 时参考的公开项目、设计取舍，以及可复用的构建和运行提示词，可作为开源仓库的设计说明与致谢文档。
 
-本文对应功能版本：**2.3.0（包含 Quota Guard、安装验收、恢复演示与可复现Release）**。整理日期：2026-10-27。
+本文对应功能版本：**2.4.0（包含 Quota Guard、安装验收、恢复演示与可复现Release）**。整理日期：2026-10-27。
 
 ## 1. 项目定位
 
@@ -85,7 +85,7 @@ https://learn.chatgpt.com/docs/app-server
 10. 多项目和工作树独立保存，互不污染。未初始化项目不应被 Hook 擅自初始化。
 11. 检查额度：使用官方 account/rateLimits/read，或可用的原生额度工具。
     对每个有效额度桶的 primary/secondary 窗口计算 remaining=100-usedPercent。
-    任一窗口 remaining<=5% 时，优先进入成果交付流程：
+    5 小时窗口 remaining<=5% 或周窗口 remaining<=2% 时，优先进入成果交付流程：
     - 不再启动新实现单元或长测试；
     - 保存已有真实文件与快照；
     - 简短更新已验证进度、未完成/未验证项和下一步；
@@ -93,7 +93,7 @@ https://learn.chatgpt.com/docs/app-server
     缺失值、接口失败和未知额度不得当作额度充足；不要自动消耗重置券。
     使用有界读取、适度缓存和失败降级，不建立无限轮询。
 12. 实施可验证测试：初始化、修改文件、确认快照、模拟中断、独立进程读取进度、
-    恢复执行；另测去重、并发、过滤、只读、保留、配置保护和5%阈值边界。
+    恢复执行；另测去重、并发、过滤、只读、保留、配置保护和两档额度阈值边界。
     有条件时用真实 Codex 宿主和本地模型夹具验证 Hooks 与收尾提示链路。
 13. 明确区分程序保证与模型行为：脚本可以检测额度、保存快照和注入收尾指令，
     但不能保证任意模型必定服从，也不能保证单次长操作跨过阈值后仍有输出额度。
@@ -111,7 +111,7 @@ https://learn.chatgpt.com/docs/app-server
 
 在任务开始、可验证小单元之间及昂贵操作前读取真实额度。
 Hooks 在支持的工具操作后检查，并采用有界读取和短期缓存。
-对所有有效窗口计算 remaining=100-usedPercent；任一窗口 remaining<=5% 时：
+对所有有效窗口计算 remaining=100-usedPercent；5 小时窗口 remaining<=5% 或周窗口 remaining<=2% 时：
 
 1. 不启动新实现单元、长测试或额外调研。
 2. 保存当前已有真实成果和快照。
@@ -221,7 +221,7 @@ For substantive long tasks, use codex-continuity-keeper: initialize a project ch
 
 ```text
 <!-- continuity-quota-guard:begin -->
-During substantive long tasks, use Continuity Keeper Quota Guard at task start, after small work units, and before expensive operations. If any actual included quota window has <=5% remaining, stop starting implementation work, save real artifacts, briefly reconcile verified progress/task states, checkpoint, and immediately deliver existing artifact paths, unfinished/unverified work, and how to resume after quota resets. Prefer get_usage_limits when available; record only real tool results via keeper.py quota-record. Unknown quota is not sufficient quota. Do not auto-redeem resets. “只看进度” remains strictly read-only.
+Use local Continuity Keeper Hooks for cached silent quota checks. Do not add model-driven quota calls or reports after each work unit. Manually check only on user request, when Hooks are unavailable, or before expensive work without a fresh reliable observation; batch with useful work. Unknown stays unknown: at most one official-tool fallback per project per 10 minutes, persist only real results via keeper.py quota-record; no polling loops or unchanged-status narration. If a reported window reaches its threshold (5-hour <=5%, weekly <=2%, other or missing duration <=5%), save artifacts, reconcile verified progress, checkpoint and immediately deliver paths, unfinished work and recovery instructions. Never auto-redeem resets. “只看进度” is read-only.
 <!-- continuity-quota-guard:end -->
 ```
 
@@ -232,7 +232,7 @@ During substantive long tasks, use Continuity Keeper Quota Guard at task start, 
 | 文件检查点 | Python 脚本、内容哈希去重、原子写入、项目独立锁、保留与回收 | 所有文件都受保护、磁盘满也能保存、未落盘思想可恢复 |
 | 项目进度 | 模型维护 PROGRESS.md 与任务清单，恢复前核对实际文件 | 记录永远最新、已写代码一定通过验收 |
 | Hooks | SessionStart、UserPromptSubmit、PostToolUse、PreCompact、Stop | 崩溃或额度耗尽时一定还能运行最后一个 Hook |
-| 额度检测 | 官方账户接口、30秒缓存、任一有效窗口剩余≤5%触发、失败降级 | 持续实时监听、单次长操作中精准踩到5% |
+| 额度检测 | 官方账户接口、30秒缓存、5 小时窗口剩余≤5%或周窗口剩余≤2%触发、失败降级 | 持续实时监听、单次长操作中精准踩到阈值 |
 | 低额度交付 | 程序保存快照和应急索引，向模型注入收尾指令 | 无条件强制模型更新进度或在额度耗尽后生成回复 |
 | 测试 | 本地记录为15/15自动测试通过；真实Codex宿主配合本地模型夹具验证低额度链路 | 已验证真实额度耗尽、断电、任意远程模型服从或所有平台 |
 
@@ -240,7 +240,7 @@ During substantive long tasks, use Continuity Keeper Quota Guard at task start, 
 
 适合公开介绍的一句话：
 
-> Codex Continuity Keeper 通过本地去重检查点、可验证进度记录和跨会话恢复流程，减少长任务中断造成的成果丢失；Quota Guard 在检测到任一有效额度窗口剩余不超过5%时，保存应急索引并提示模型优先交付。
+> Codex Continuity Keeper 通过本地去重检查点、可验证进度记录和跨会话恢复流程，减少长任务中断造成的成果丢失；Quota Guard 在检测到 5 小时额度剩余 ≤5% 或周额度剩余 ≤2%时，保存应急索引并提示模型优先交付。
 
 不要写成“无限续命”“保证不丢任何成果”“额度耗尽前必定交付”或“绕过额度限制”。
 

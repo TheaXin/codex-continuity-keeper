@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0
+
+- Designed for Codex Plus. Save and hand off at 5% remaining in the five-hour window or 2% in the weekly window.
+- Healthy Hook checks stay silent. Unknown-quota notices are limited to once per project per ten minutes.
+
 ## 2.3.0
 
 - Add reproducible Release archives, source manifests and integrity verification.

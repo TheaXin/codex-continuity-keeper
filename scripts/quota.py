@@ -6,7 +6,9 @@ from keeper import atomic, encoded, load, locked, state, stamp
 
 INTERVAL=30
 TIMEOUT=7
-THRESHOLD=5
+DEFAULT_THRESHOLD=5
+WEEKLY_THRESHOLD=2
+WEEKLY_WINDOW_MINUTES=7*24*60
 
 def windows_from(raw,now=None):
     now=time.time() if now is None else now
@@ -82,7 +84,7 @@ def effective(record,now=None):
     now=time.time() if now is None else now
     out=dict(record)
     valid=[w for w in record.get('windows',[]) if w.get('resetsAt') is None or w['resetsAt']>now]
-    out['lowWindows']=[w for w in valid if w['remainingPercent']<=THRESHOLD]
+    out['lowWindows']=[w for w in valid if w['remainingPercent'] <= (WEEKLY_THRESHOLD if w.get('windowDurationMins') == WEEKLY_WINDOW_MINUTES else DEFAULT_THRESHOLD)]
     out['low']=bool(out['lowWindows'])
     out['stale']=now-record.get('observedAt',0)>INTERVAL
     return out
@@ -105,7 +107,7 @@ def _store(s,raw,now,source):
     record=effective(record,now)
     atomic(s/'quota.json',encoded(record))
     if record['low']:
-        atomic(s/'QUOTA_HANDOFF.md',('# Low quota emergency index\n\nDetected: '+stamp()+'\n\nOne or more observed quota windows have <=5% remaining.\nThis is a mechanical index, NOT a semantic completion report.\n\n- Actual artifacts: inspect the project files and outputs/ if present.\n- Verified progress: ../PROGRESS.md (may lag the last operation).\n- Unfinished work: ../CONTINUITY_TASKS.md.\n- File checkpoint: latest.json and snapshots/ (filtered files are not protected).\n- Recovery: after quota resets, say 继续 in this project; inspect current files and Git differences before resuming.\n- Do not start a new implementation unit. Save a short verified handoff and deliver paths/results now.\n').encode())
+        atomic(s/'QUOTA_HANDOFF.md',('# Low quota emergency index\n\nDetected: '+stamp()+'\n\nOne or more observed quota windows reached the handoff threshold (5-hour: <=5%; weekly: <=2%).\nThis is a mechanical index, NOT a semantic completion report.\n\n- Actual artifacts: inspect the project files and outputs/ if present.\n- Verified progress: ../PROGRESS.md (may lag the last operation).\n- Unfinished work: ../CONTINUITY_TASKS.md.\n- File checkpoint: latest.json and snapshots/ (filtered files are not protected).\n- Recovery: after quota resets, say 继续 in this project; inspect current files and Git differences before resuming.\n- Do not start a new implementation unit. Save a short verified handoff and deliver paths/results now.\n').encode())
     return record
 
 def check(root,force=False):
@@ -146,10 +148,17 @@ def re_status(command):
     import re
     return bool(re.search(r'\bstatus\s*(?:$|[|;])',command))
 
-def feedback(record):
+def feedback(record,root=None):
     if record.get('low'):
         values=', '.join(w['bucket']+'/'+w['window']+' remaining '+str(w['remainingPercent'])+'%' for w in record['lowWindows'])
         return 'LOW_QUOTA_HANDOFF: '+values+'. Stop starting implementation units now. Immediately save current real artifacts, briefly update verified PROGRESS.md and CONTINUITY_TASKS.md, checkpoint, then FINAL reply with 已有成果(absolute paths), 未完成/未验证, and 恢复方法(额度恢复后在原项目说继续). Do not launch lengthy tests, new agents, automatic resets, or extra research. Do not claim unfinished work is done. Snapshot index: .continuity-keeper/QUOTA_HANDOFF.md.'
     if record.get('status')=='unknown':
-        return 'Quota Guard: usage could not be read; do not assume quota is sufficient. Before the next expensive operation, use get_usage_limits if available and record its real result via keeper.py quota-record. Continue normal small durable checkpoints; no repeated polling loop.'
+        # Bound repeated unknown notices across concurrent Hook processes.
+        if root is not None:
+            qstate=state(root)
+            with locked(qstate/'quota-notice'):
+                now=time.time(); old=load(qstate/'quota-notice.json',{})
+                if 0<=now-old.get('unknownAt',0)<600: return ''
+                atomic(qstate/'quota-notice.json',encoded({'unknownAt':now}))
+        return 'Quota Guard: usage could not be read; do not assume quota is sufficient. Before the next expensive operation, make at most one get_usage_limits fallback per 10 minutes if available and record its real result via keeper.py quota-record. Do not narrate unchanged quota checks. Continue normal small durable checkpoints; no repeated polling loop.'
     return ''

@@ -5,14 +5,33 @@ from unittest.mock import patch
 import keeper, quota
 
 def data(a=0,b=None,reset=None):
-    return {'rateLimitsByLimitId':{'codex':{'primary':{'usedPercent':a,'resetsAt':reset},'secondary':{'usedPercent':b,'resetsAt':reset} if b is not None else None}}}
+    return {'rateLimitsByLimitId':{'codex':{'primary':{'usedPercent':a,'windowDurationMins':300,'resetsAt':reset},'secondary':{'usedPercent':b,'windowDurationMins':10080,'resetsAt':reset} if b is not None else None}}}
 
 class QuotaTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name).resolve();keeper.init(self.root)
     def tearDown(self):self.temp.cleanup()
+    def test_unknown_notice_throttled_low_never_suppressed(self):
+        unknown={'status':'unknown','low':False}
+        with patch.object(quota.time,'time',return_value=1000):
+            self.assertTrue(quota.feedback(unknown,root=self.root))
+            for _ in range(100): self.assertEqual(quota.feedback(unknown,root=self.root),'')
+        with patch.object(quota.time,'time',return_value=1601):
+            self.assertTrue(quota.feedback(unknown,root=self.root))
+        low={'low':True,'lowWindows':[{'bucket':'codex','window':'primary','remainingPercent':5}]}
+        for _ in range(2): self.assertIn('LOW_QUOTA_HANDOFF',quota.feedback(low,root=self.root))
+        self.assertEqual(quota.feedback({'status':'known','low':False},root=self.root),'')
+
+    def test_weekly_policy_follows_duration_not_slot(self):
+        raw=data(95,95)
+        bucket=raw['rateLimitsByLimitId']['codex']
+        bucket['primary']['windowDurationMins']=10080
+        bucket['secondary']['windowDurationMins']=300
+        result=quota.observe(self.root,raw)
+        self.assertEqual([w['window'] for w in result['lowWindows']],['secondary'])
+
     def test_thresholds_any_window_and_null(self):
-        for a,b,want in [(94.99,50,False),(94.999999,50,False),(95,50,True),(1,95,True),(100,20,True),(5,None,False)]:
+        for a,b,want in [(94.99,50,False),(94.999999,50,False),(95,50,True),(1,95,False),(1,97.99,False),(1,98,True),(100,20,True),(5,None,False)]:
             with self.subTest(a=a,b=b):
                 r=quota.observe(self.root,data(a,b),now=100);self.assertEqual(r['low'],want)
         for x in [None,True,float('nan'),-1,101]:
